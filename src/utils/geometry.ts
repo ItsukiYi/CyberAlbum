@@ -267,9 +267,10 @@ export function detectQuadFromCanvas(src: HTMLCanvasElement): Point[] | null {
 }
 
 // ---------- 连通块（按面积降序） ----------
-function allBlobs(mask: Uint8Array, w: number, h: number): Uint8Array[] {
+// 返回的是像素索引数组；像素数可超过 65535，必须用 Uint32Array 承载
+function allBlobs(mask: Uint8Array, w: number, h: number): Uint32Array[] {
   const visited = new Uint8Array(w * h);
-  const blobs: Uint8Array[] = [];
+  const blobs: Uint32Array[] = [];
   const stack = new Int32Array(w * h);
   for (let start = 0; start < mask.length; start++) {
     if (!mask[start] || visited[start]) continue;
@@ -304,7 +305,7 @@ function allBlobs(mask: Uint8Array, w: number, h: number): Uint8Array[] {
   return blobs;
 }
 
-function largestBlob(mask: Uint8Array, w: number, h: number): Uint8Array | null {
+function largestBlob(mask: Uint8Array, w: number, h: number): Uint32Array | null {
   return allBlobs(mask, w, h)[0] ?? null;
 }
 

@@ -14,7 +14,8 @@ export function filterItems(items: Item[], f: Filters): Item[] {
   }
   if (f.typeId) out = out.filter((it) => it.typeId === f.typeId);
   if (f.work) out = out.filter((it) => it.work === f.work);
-  if (f.author) out = out.filter((it) => it.author === f.author || (it.cosers ?? []).includes(f.author));
+  const author = f.author;
+  if (author) out = out.filter((it) => it.author === author || (it.cosers ?? []).includes(author));
   if (f.event) out = out.filter((it) => it.event === f.event);
   if (f.region?.province) {
     out = out.filter((it) => it.region?.province === f.region!.province);

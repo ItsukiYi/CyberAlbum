@@ -12,6 +12,21 @@ import type { CustomFieldDef, TypeDef } from '../db/types';
 import { exportBackup, exportSync, getLastSyncTime, importBackup, importMerge } from '../utils/backup';
 import { Btn } from './ui';
 
+/** 新增类型时按顺序循环取的颜色（与预设类型的配色风格一致） */
+const PALETTE = [
+  '#e25c6c',
+  '#e07b3a',
+  '#3a8de0',
+  '#2fae8f',
+  '#8b5ce0',
+  '#d94f9e',
+  '#5c6bc0',
+  '#43a047',
+  '#f0a530',
+  '#607d8b',
+  '#9aa0a6',
+];
+
 function TypeRow({ t, onDelete }: { t: TypeDef; onDelete: (id: string) => void }) {
   const [confirming, setConfirming] = useState(false);
   const [name, setName] = useState(t.name);

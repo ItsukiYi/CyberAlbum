@@ -84,6 +84,7 @@ export function BatchImport({ onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<number | null>(null);
   const [preview, setPreview] = useState<Preview[] | null>(null);
+  const [photoCount, setPhotoCount] = useState(0); // 图集模式实际导入的照片数（preview 清空后仍可用）
   const [albumInfo, setAlbumInfo] = useState({
     name: '',
     typeId: '',
@@ -188,6 +189,7 @@ export function BatchImport({ onClose }: Props) {
         }
       }
       setPreview(null);
+      setPhotoCount(blobs.length);
       setDone(saved);
       if (saved > 0) refresh();
     } finally {
@@ -199,12 +201,11 @@ export function BatchImport({ onClose }: Props) {
   const doneLabel =
     mode === 'album'
       ? done && done > 0
-        ? `✅ 已导入 ${previewTotal} 张照片合成 1 条记录，去图库补填信息`
+        ? `✅ 已导入 ${photoCount} 张照片合成 1 条记录，去图库补填信息`
         : '❌ 一张都没成功，请重试'
       : done && done > 0
         ? `✅ 已导入 ${done} 件，去图库补填信息`
         : '❌ 一张都没成功，请重试';
-  const previewTotal = preview?.length ?? 0;
 
   return (
     <Modal
