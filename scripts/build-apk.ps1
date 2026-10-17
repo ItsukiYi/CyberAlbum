@@ -49,6 +49,18 @@ foreach ($d in @($build, $resRoot, $resDir, $apkAssets, $assetsOut, $genOut, $cl
 }
 
 # ---------- 1. Build web assets ----------
+# scanic UMD 位于 public/scanic（被 gitignore，需从 node_modules 生成）
+$scanicPublic = Join-Path $root 'public\scanic\scanic.js'
+if (-not (Test-Path $scanicPublic)) {
+  $scanicSrc = Join-Path $root 'node_modules\scanic\dist\scanic.umd.cjs'
+  if (Test-Path $scanicSrc) {
+    New-Item -ItemType Directory -Force -Path (Split-Path $scanicPublic) | Out-Null
+    Copy-Item $scanicSrc $scanicPublic -Force
+    Write-Host '  scanic UMD copied from node_modules'
+  } else {
+    Write-Host '  WARN: scanic UMD missing - run npm install scanic'
+  }
+}
 if (-not $SkipWebBuild) {
   Write-Host '==> npm run build'
   Push-Location $root

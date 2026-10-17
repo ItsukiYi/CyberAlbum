@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { detectQuadsFromCanvas, type Point } from '../utils/geometry';
+import { detectQuadsSmart } from '../utils/scanDetect';
 import {
   compressCanvas,
   cornersEqual,
@@ -91,7 +92,7 @@ export function PhotoEditor({ blob, index, total, onDone, onSkip, onCancel }: Pr
         sourceRef.current = cv;
         setSource(cv);
         const defaultQuad = fullFrameCorners(cv.width, cv.height);
-        const found = detectQuadsFromCanvas(cv);
+        const found = await detectQuadsSmart(cv);
         if (!alive) return;
         if (found && found.length) {
           setQuads(found);
@@ -353,13 +354,13 @@ export function PhotoEditor({ blob, index, total, onDone, onSkip, onCancel }: Pr
     }
   };
 
-  const rotate = () => {
+  const rotate = async () => {
     const src = sourceRef.current;
     if (!src) return;
     const cv = rotateCanvas(src);
     sourceRef.current = cv;
     setSource(cv);
-    const found = detectQuadsFromCanvas(cv);
+    const found = await detectQuadsSmart(cv);
     if (found && found.length) {
       setQuads(found);
       setActive(0);
@@ -371,10 +372,10 @@ export function PhotoEditor({ blob, index, total, onDone, onSkip, onCancel }: Pr
     computeView();
   };
 
-  const auto = () => {
+  const auto = async () => {
     const src = sourceRef.current;
     if (!src) return;
-    const found = detectQuadsFromCanvas(src);
+    const found = await detectQuadsSmart(src);
     if (found && found.length) {
       setQuads(found);
       setActive(0);

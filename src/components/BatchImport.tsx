@@ -7,6 +7,7 @@ import { AutoInput } from './AutoInput';
 import { DateField } from './DateField';
 import { SelectField } from './SelectField';
 import { detectQuadsFromCanvas } from '../utils/geometry';
+import { detectQuadsSmart } from '../utils/scanDetect';
 import {
   canvasToBlob,
   compressCanvas,
@@ -121,7 +122,7 @@ export function BatchImport({ onClose }: Props) {
     const cv = imageToCanvas(img);
     const en = settings.autoEnhance;
     if (skip) return { blobs: [await compressImage(img, en)], corrected: false };
-    const quads = detectQuadsFromCanvas(cv) ?? [];
+    const quads = (await detectQuadsSmart(cv)) ?? [];
     const valid = quads.filter((q) => !cornersEqual(q, fullFrameCorners(cv.width, cv.height), 3));
     if (valid.length > 1) {
       // 一张照片里有多张色纸：各自裁正

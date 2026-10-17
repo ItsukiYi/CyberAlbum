@@ -1,3 +1,5 @@
 /.tools
 /node_modules
 /android/build
+/public/opencv
+/public/scanic
