@@ -176,11 +176,14 @@ export function ItemForm() {
       const blobs: Blob[] = Array.from(files);
       if (blobs.length) {
         if (skip) {
-          // 跳过矫正：压缩后直接加入
+          // 跳过矫正：压缩后直接加入（按设置自动美化）
           setProcessingPhotos(true);
           try {
             const added = await Promise.all(
-              blobs.map(async (file) => ({ id: uid('p'), blob: await compressImage(await fileToImage(file)) }))
+              blobs.map(async (file) => ({
+                id: uid('p'),
+                blob: await compressImage(await fileToImage(file), settings.autoEnhance),
+              }))
             );
             setPhotos((prev) => [...prev, ...added]);
           } catch (err) {

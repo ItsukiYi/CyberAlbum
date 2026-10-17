@@ -1,6 +1,7 @@
 // 图片加载 / 压缩 / 旋转
 import type { Point } from './geometry';
 import { warpPerspective } from './perspective';
+import { autoEnhancePixels } from './enhance';
 
 const MAX_DIM = 2000;
 const JPEG_QUALITY = 0.85;
@@ -45,12 +46,13 @@ export function canvasToBlob(canvas: HTMLCanvasElement, quality = JPEG_QUALITY):
 }
 
 /** 压缩到长边 <= MAX_DIM 的 JPEG Blob，同时处理 EXIF 方向 */
-export async function compressImage(img: HTMLImageElement): Promise<Blob> {
-  return compressCanvas(imageToCanvas(img));
+export async function compressImage(img: HTMLImageElement, enhance = false): Promise<Blob> {
+  return compressCanvas(imageToCanvas(img), undefined, enhance);
 }
 
 /** 直接把画布压缩输出为 JPEG Blob */
-export async function compressCanvas(canvas: HTMLCanvasElement): Promise<Blob> {
+export async function compressCanvas(canvas: HTMLCanvasElement, quality = JPEG_QUALITY, enhance = false): Promise<Blob> {
+  if (enhance) autoEnhance(canvas);
   const srcW = canvas.width;
   const srcH = canvas.height;
   const scale = Math.min(1, MAX_DIM / Math.max(srcW, srcH));
@@ -62,7 +64,21 @@ export async function compressCanvas(canvas: HTMLCanvasElement): Promise<Blob> {
   const ctx = out.getContext('2d');
   if (!ctx) throw new Error('无法创建画布');
   ctx.drawImage(canvas, 0, 0, w, h);
-  return canvasToBlob(out);
+  return canvasToBlob(out, quality);
+}
+
+/**
+ * 自动图片美化（原地修改画布像素）：白平衡 → 对比度拉伸 → 饱和度微增。
+ * 用于改善实拍照片与实物之间的观感差距（偏色/发灰/发闷）。
+ */
+export function autoEnhance(src: HTMLCanvasElement): HTMLCanvasElement {
+  if (!src.width || !src.height) return src;
+  const ctx = src.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return src;
+  const img = ctx.getImageData(0, 0, src.width, src.height);
+  autoEnhancePixels(img.data);
+  ctx.putImageData(img, 0, 0);
+  return src;
 }
 
 /** 顺时针旋转 90° */
@@ -104,10 +120,12 @@ export interface CropResult {
 /** 用四边形裁切并矫正成矩形，再压缩输出 */
 export async function cropQuadToBlob(
   src: HTMLCanvasElement,
-  corners: Point[]
+  corners: Point[],
+  enhance = false
 ): Promise<CropResult> {
   const quad = corners as [Point, Point, Point, Point];
   const warped = warpPerspective(src, quad);
+  if (enhance) autoEnhance(warped);
   const blob = await canvasToBlob(warped);
   return { blob, canvas: warped };
 }

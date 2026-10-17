@@ -280,6 +280,15 @@ export function SettingsView() {
       </section>
 
       <section className="settings-section">
+        <h2>照片处理</h2>
+        <div className="setting-row">
+          <span className="setting-label">自动美化照片</span>
+          <input type="checkbox" checked={settings.autoEnhance} onChange={() => toggle('autoEnhance')} />
+        </div>
+        <p className="settings-desc">自动修正色偏（白平衡）、提升对比度与饱和度，让照片观感更接近实物。拍照/矫正/导入时自动应用，可随时关闭。</p>
+      </section>
+
+      <section className="settings-section">
         <h2>双机迁移同步</h2>
         <p className="settings-desc">主力机拍完 → 导出同步包（只含上次同步后的新增）→ 用隔空投送/微信/USB 传到另一台设备 → 导入合并。两边可交替同步，数据不清空。</p>
         <div className="setting-row">

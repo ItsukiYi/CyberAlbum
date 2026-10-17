@@ -64,6 +64,7 @@ export interface AppSettings {
   showPrice: boolean;
   showSource: boolean;
   skipCorrection: boolean; // 照片已拍正，跳过矫正直接入
+  autoEnhance: boolean; // 自动美化（白平衡/对比度/饱和度）
 }
 
 export interface Filters {
@@ -85,6 +86,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showPrice: false,
   showSource: false,
   skipCorrection: false,
+  autoEnhance: true,
 };
 
 export const EMPTY_FILTERS: Filters = {

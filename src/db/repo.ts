@@ -88,7 +88,8 @@ export async function deleteCustomField(id: string): Promise<void> {
 // ---------- 设置 ----------
 export async function getSettings(): Promise<AppSettings> {
   const row = await db.settings.get('main');
-  return row ?? { ...DEFAULT_SETTINGS };
+  // 合并默认值：兼容旧数据（新字段如 autoEnhance 缺失时取默认）
+  return row ? { ...DEFAULT_SETTINGS, ...row } : { ...DEFAULT_SETTINGS };
 }
 
 export async function saveSettings(s: AppSettings): Promise<void> {

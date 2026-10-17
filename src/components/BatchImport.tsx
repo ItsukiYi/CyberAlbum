@@ -112,21 +112,22 @@ export function BatchImport({ onClose }: Props) {
     e.target.value = '';
   };
 
-  /** 处理一张照片 → 可能裁出多张（一图多色纸） */
+  /** 处理一张照片 → 可能裁出多张（一图多色纸），输出前按设置自动美化 */
   const processFile = async (file: File): Promise<Blob[]> => {
     const img = await fileToImage(file);
     const cv = imageToCanvas(img);
-    if (skip) return [await compressImage(img)];
+    const en = settings.autoEnhance;
+    if (skip) return [await compressImage(img, en)];
     const quads = detectQuadsFromCanvas(cv) ?? [];
     const valid = quads.filter((q) => !cornersEqual(q, fullFrameCorners(cv.width, cv.height), 3));
     if (valid.length > 1) {
       // 一张照片里有多张色纸：各自裁正
       const out: Blob[] = [];
-      for (const q of valid) out.push((await cropQuadToBlob(cv, q)).blob);
+      for (const q of valid) out.push((await cropQuadToBlob(cv, q, en)).blob);
       return out;
     }
     const q = valid[0] ?? null;
-    return q ? [(await cropQuadToBlob(cv, q)).blob] : [await compressCanvas(cv)];
+    return q ? [(await cropQuadToBlob(cv, q, en)).blob] : [await compressCanvas(cv, undefined, en)];
   };
 
   /** 阶段 1：处理照片 → 预览 */

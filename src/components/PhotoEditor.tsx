@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useStore } from '../state/store';
 import { detectQuadsFromCanvas, type Point } from '../utils/geometry';
 import {
   compressCanvas,
@@ -52,6 +53,7 @@ function pointInQuad(p: Point, quad: Point[]): boolean {
 }
 
 export function PhotoEditor({ blob, index, total, onDone, onSkip, onCancel }: Props) {
+  const { settings } = useStore();
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lensCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -405,7 +407,9 @@ export function PhotoEditor({ blob, index, total, onDone, onSkip, onCancel }: Pr
         return;
       }
       for (const q of qs) {
-        const blob = cornersEqual(q, full, 3) ? await compressCanvas(src) : (await cropQuadToBlob(src, q)).blob;
+        const blob = cornersEqual(q, full, 3)
+          ? await compressCanvas(src, undefined, settings.autoEnhance)
+          : (await cropQuadToBlob(src, q, settings.autoEnhance)).blob;
         onDone(blob);
       }
     } catch (err) {
@@ -423,10 +427,10 @@ export function PhotoEditor({ blob, index, total, onDone, onSkip, onCancel }: Pr
     try {
       const cur = quadsRef.current[activeRef.current] ?? fullFrameCorners(src.width, src.height);
       if (cornersEqual(cur, fullFrameCorners(src.width, src.height), 3)) {
-        const blobOut = await compressCanvas(src);
+        const blobOut = await compressCanvas(src, undefined, settings.autoEnhance);
         onDone(blobOut);
       } else {
-        const { blob: blobOut } = await cropQuadToBlob(src, cur);
+        const { blob: blobOut } = await cropQuadToBlob(src, cur, settings.autoEnhance);
         onDone(blobOut);
       }
     } catch (err) {
