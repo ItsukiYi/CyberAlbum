@@ -63,7 +63,8 @@ export function TagInput({ values, onChange, suggestions = [], placeholder, hint
           }}
           onBlur={() => {
             submit();
-            setFocused(false);
+            // 延时关闭，避免点击联想项时列表先卸载导致 click 丢失（触摸端 blur 竞态）
+            window.setTimeout(() => setFocused(false), 150);
           }}
           onFocus={() => setFocused(true)}
         />
@@ -75,6 +76,8 @@ export function TagInput({ values, onChange, suggestions = [], placeholder, hint
               type="button"
               key={s}
               className="tag-suggest-item"
+              onPointerDown={(e) => e.preventDefault()}
+              onTouchStart={(e) => e.preventDefault()}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 add(s);

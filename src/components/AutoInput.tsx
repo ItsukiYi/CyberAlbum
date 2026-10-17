@@ -7,14 +7,19 @@ interface Props {
   placeholder?: string;
 }
 
-/** 单行输入 + 已录入词联想（点选填入） */
+/**
+ * 单行输入 + 已录入词联想：聚焦即显示全部候选（点选填入），输入时按前缀过滤。
+ * 联想项按下时阻止 blur 转移 + blur 延时关闭，避免触摸端点击丢失。
+ */
 export function AutoInput({ value, onChange, suggestions = [], placeholder }: Props) {
   const [open, setOpen] = useState(false);
 
-  const cands =
-    open && value.trim()
-      ? suggestions.filter((s) => s !== value.trim() && s.includes(value.trim())).slice(0, 6)
-      : [];
+  const cands = open
+    ? (value.trim()
+        ? suggestions.filter((s) => s !== value.trim() && s.includes(value.trim()))
+        : suggestions.filter((s) => s !== value))
+        .slice(0, 8)
+    : [];
 
   return (
     <div className="auto-input">
@@ -24,7 +29,7 @@ export function AutoInput({ value, onChange, suggestions = [], placeholder }: Pr
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
+        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
       />
       {cands.length > 0 && (
         <div className="tag-suggest">
@@ -33,6 +38,8 @@ export function AutoInput({ value, onChange, suggestions = [], placeholder }: Pr
               key={s}
               type="button"
               className="tag-suggest-item"
+              onPointerDown={(e) => e.preventDefault()}
+              onTouchStart={(e) => e.preventDefault()}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 onChange(s);
