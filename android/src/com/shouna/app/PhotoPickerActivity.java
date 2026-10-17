@@ -3,6 +3,7 @@ package com.shouna.app;
 import android.app.Activity;
 import android.content.ContentUris;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -18,8 +19,10 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.util.LruCache;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Button;
@@ -40,7 +43,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * 自定义相册选择页：支持点击多选 + 手指拖拽连续多选。
+ * 自定义相册选择页：
+ *  - 普通滑动 = 滚动浏览
+ *  - 长按某张照片 = 进入多选模式（震动提示），点按切换勾选
+ *  - 多选模式下拖动 = 滑过的格子连续选中/取消（拖拽多选）
  * 结果通过 EXTRA_RESULT_URIS（Uri[]）返回给 MainActivity。
  */
 public class PhotoPickerActivity extends Activity {
@@ -49,9 +55,11 @@ public class PhotoPickerActivity extends Activity {
 
   private static final int REQ_PERMISSION = 2001;
   private static final int THUMB_TARGET = 320;
+  private static final long LONG_PRESS_MS = 350;
 
-  private GridView grid;
+  private PickerGridView grid;
   private TextView countView;
+  private TextView hintView;
   private final List<Long> photoIds = new ArrayList<>();
   private final Set<Integer> selected = new HashSet<>();
   private final LruCache<Long, Bitmap> cache = new LruCache<Long, Bitmap>(48 * 1024 * 1024) {
@@ -63,8 +71,6 @@ public class PhotoPickerActivity extends Activity {
   private final ExecutorService pool = Executors.newSingleThreadExecutor();
   private final Handler main = new Handler(Looper.getMainLooper());
 
-  private int lastTouchPos = -1;
-  private boolean dragSelect = true;
   private boolean loaded = false;
 
   @Override
@@ -98,11 +104,20 @@ public class PhotoPickerActivity extends Activity {
     root.setOrientation(LinearLayout.VERTICAL);
     root.setBackgroundColor(0xFF101018);
 
-    grid = new GridView(this);
+    hintView = new TextView(this);
+    hintView.setText("长按照片进入多选，拖动连续勾选");
+    hintView.setTextColor(0xFFBBBBCC);
+    hintView.setGravity(Gravity.CENTER);
+    hintView.setPadding(dp(6), dp(8), dp(6), dp(8));
+    hintView.setBackgroundColor(0xFF1B1B26);
+    root.addView(hintView, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+    grid = new PickerGridView(this);
     grid.setNumColumns(4);
     grid.setVerticalSpacing(dp(4));
     grid.setHorizontalSpacing(dp(4));
     grid.setPadding(dp(6), dp(6), dp(6), dp(6));
+    grid.setLongPressListener(pos -> enterSelectionMode(pos));
     root.addView(grid, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
     LinearLayout foot = new LinearLayout(this);
@@ -118,7 +133,7 @@ public class PhotoPickerActivity extends Activity {
 
     Button cancel = new Button(this);
     cancel.setText("取消");
-    cancel.setOnClickListener(v -> finish());
+    cancel.setOnClickListener(v -> exitSelectionMode());
     foot.addView(cancel);
 
     Button done = new Button(this);
@@ -155,72 +170,57 @@ public class PhotoPickerActivity extends Activity {
     if (photoIds.isEmpty()) {
       Toast.makeText(this, "相册里没有照片", Toast.LENGTH_SHORT).show();
     }
-    grid.setOnItemClickListener((p, v, pos, id) -> toggle(pos));
-    grid.setOnTouchListener(dragTouchListener);
   }
 
-  private void toggle(int pos) {
+  /** 长按激活多选模式 */
+  private void enterSelectionMode(int pos) {
     if (pos < 0 || pos >= photoIds.size()) return;
-    if (selected.contains(pos)) {
-      selected.remove(pos);
-    } else {
-      selected.add(pos);
+    if (!grid.selectionMode) {
+      grid.selectionMode = true;
+      hintView.setText("已进入多选：点按勾选，拖动连续选择，点「取消」退出");
     }
-    refreshCells();
+    grid.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+    selected.add(pos);
+    // 手指未抬起继续拖动时，从长按的这格开始连续选中
+    grid.lastTouchPos = pos;
+    grid.dragSelect = true;
+    updateCell(pos);
+    updateCount();
   }
 
-  private void refreshCells() {
+  private void exitSelectionMode() {
+    grid.selectionMode = false;
+    grid.lastTouchPos = -1;
+    selected.clear();
+    hintView.setText("长按照片进入多选，拖动连续勾选");
+    updateAllVisibleCells();
+    updateCount();
+  }
+
+  private void updateCount() {
     countView.setText("已选 " + selected.size() + " 张");
-    if (grid.getAdapter() != null) {
-      ((BaseAdapter) grid.getAdapter()).notifyDataSetChanged();
+  }
+
+  /** 只更新单个可见格子的选中遮罩/序号，不动缩略图（避免变黑重载） */
+  private void updateCell(int pos) {
+    int child = pos - grid.getFirstVisiblePosition();
+    View v = grid.getChildAt(child);
+    if (v instanceof FrameLayout) {
+      FrameLayout cell = (FrameLayout) v;
+      View overlay = cell.getChildAt(1);
+      TextView badge = (TextView) cell.getChildAt(2);
+      boolean sel = selected.contains(pos);
+      overlay.setVisibility(sel ? View.VISIBLE : View.GONE);
+      badge.setText(sel ? String.valueOf(selectedIndex(pos) + 1) : "");
     }
   }
 
-  /** 拖拽多选：按下格子后滑动，滑过的格子连续选中（或连续取消）；空白处按下可滚动 */
-  private final View.OnTouchListener dragTouchListener = new View.OnTouchListener() {
-    @Override
-    public boolean onTouch(View v, MotionEvent e) {
-      int pos = grid.pointToPosition((int) e.getX(), (int) e.getY());
-      switch (e.getActionMasked()) {
-        case MotionEvent.ACTION_DOWN:
-          if (pos >= 0 && pos < photoIds.size()) {
-            dragSelect = !selected.contains(pos);
-            applyPos(pos);
-            lastTouchPos = pos;
-            return true; // 吃掉事件，进入拖拽选择（此时 GridView 不滚动）
-          }
-          lastTouchPos = -1;
-          return false; // 空白处按下：交给 GridView 滚动
-        case MotionEvent.ACTION_MOVE:
-          if (lastTouchPos >= 0 && pos >= 0 && pos < photoIds.size() && pos != lastTouchPos) {
-            fillRange(lastTouchPos, pos);
-            lastTouchPos = pos;
-          }
-          return lastTouchPos >= 0;
-        case MotionEvent.ACTION_UP:
-        case MotionEvent.ACTION_CANCEL:
-          lastTouchPos = -1;
-          return true;
-      }
-      return false;
+  private void updateAllVisibleCells() {
+    int first = grid.getFirstVisiblePosition();
+    int last = grid.getLastVisiblePosition();
+    for (int i = first; i <= last && i >= 0; i++) {
+      updateCell(i);
     }
-  };
-
-  private void applyPos(int pos) {
-    if (pos < 0 || pos >= photoIds.size()) return;
-    if (dragSelect) selected.add(pos);
-    else selected.remove(pos);
-    refreshCells();
-  }
-
-  private void fillRange(int from, int to) {
-    int a = Math.min(from, to);
-    int b = Math.max(from, to);
-    for (int i = a; i <= b; i++) {
-      if (dragSelect) selected.add(i);
-      else selected.remove(i);
-    }
-    refreshCells();
   }
 
   private void finishWithResult() {
@@ -240,6 +240,7 @@ public class PhotoPickerActivity extends Activity {
   @Override
   protected void onDestroy() {
     pool.shutdown();
+    grid.removeCallbacks(null);
     super.onDestroy();
   }
 
@@ -250,6 +251,121 @@ public class PhotoPickerActivity extends Activity {
   private int cellSize() {
     int screenW = getResources().getDisplayMetrics().widthPixels;
     return Math.max(1, (screenW - dp(24)) / 4);
+  }
+
+  private int selectedIndex(int pos) {
+    List<Integer> sorted = new ArrayList<>(selected);
+    Collections.sort(sorted);
+    return sorted.indexOf(pos);
+  }
+
+  /**
+   * 手势分离：普通滑动 = GridView 正常滚动；长按激活选择模式后，
+   * 拦截事件交给拖拽连续选择。
+   */
+  private interface LongPressListener {
+    void onLongPress(int pos);
+  }
+
+  private class PickerGridView extends GridView {
+    boolean selectionMode = false;
+    int lastTouchPos = -1;
+    private final Runnable longPressCheck;
+    private float downX, downY;
+    private int downPos = -1;
+    private boolean dragSelect = true;
+
+    PickerGridView(Context c) {
+      super(c);
+      longPressCheck = () -> {
+        if (downPos >= 0) {
+          LongPressListener l = longPressListener;
+          if (l != null) l.onLongPress(downPos);
+        }
+      };
+    }
+
+    private LongPressListener longPressListener;
+
+    void setLongPressListener(LongPressListener l) {
+      this.longPressListener = l;
+    }
+
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent e) {
+      int action = e.getActionMasked();
+      if (action == MotionEvent.ACTION_DOWN) {
+        if (selectionMode) {
+          return true; // 选择模式：全部交给 onTouchEvent
+        }
+        downX = e.getX();
+        downY = e.getY();
+        downPos = pointToPosition((int) e.getX(), (int) e.getY());
+        postDelayed(longPressCheck, LONG_PRESS_MS);
+      } else if (action == MotionEvent.ACTION_MOVE) {
+        if (selectionMode) {
+          return true;
+        }
+        int slop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
+        if (Math.abs(e.getX() - downX) > slop || Math.abs(e.getY() - downY) > slop) {
+          removeCallbacks(longPressCheck); // 滑动距离大：视为滚动，取消长按
+          downPos = -1;
+        }
+      } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+        removeCallbacks(longPressCheck);
+        downPos = -1;
+      }
+      return super.onInterceptTouchEvent(e);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent e) {
+      int action = e.getActionMasked();
+      if (selectionMode) {
+        int pos = pointToPosition((int) e.getX(), (int) e.getY());
+        switch (action) {
+          case MotionEvent.ACTION_DOWN:
+            if (pos >= 0 && pos < photoIds.size()) {
+              dragSelect = !selected.contains(pos);
+              applyPos(pos);
+              lastTouchPos = pos;
+            }
+            return true;
+          case MotionEvent.ACTION_MOVE:
+            if (lastTouchPos >= 0 && pos >= 0 && pos < photoIds.size() && pos != lastTouchPos) {
+              fillRange(lastTouchPos, pos);
+              lastTouchPos = pos;
+            }
+            return true;
+          case MotionEvent.ACTION_UP:
+          case MotionEvent.ACTION_CANCEL:
+            lastTouchPos = -1;
+            return true;
+        }
+        return true;
+      }
+      return super.onTouchEvent(e);
+    }
+
+    private void applyPos(int pos) {
+      if (pos < 0 || pos >= photoIds.size()) return;
+      if (dragSelect) selected.add(pos);
+      else selected.remove(pos);
+      updateCell(pos);
+      updateCount();
+    }
+
+    private void fillRange(int from, int to) {
+      int a = Math.min(from, to);
+      int b = Math.max(from, to);
+      for (int i = a; i <= b; i++) {
+        if (i < 0 || i >= photoIds.size()) continue;
+        if (dragSelect) selected.add(i);
+        else selected.remove(i);
+        updateCell(i);
+      }
+      updateCount();
+    }
   }
 
   private class PickerAdapter extends BaseAdapter {
@@ -301,13 +417,13 @@ public class PhotoPickerActivity extends Activity {
         bl.gravity = Gravity.TOP | Gravity.END;
         cell.addView(badge, bl);
       }
+      cell.setTag(position);
 
       long id = photoIds.get(position);
       boolean sel = selected.contains(position);
       overlay.setVisibility(sel ? View.VISIBLE : View.GONE);
       badge.setText(sel ? String.valueOf(selectedIndex(position) + 1) : "");
-      iv.setImageResource(android.R.color.transparent);
-
+      // 注意：不复用视图时清空图片 —— 保留旧图直到新图到位，避免闪烁/变黑
       Bitmap bmp = cache.get(id);
       if (bmp != null) {
         iv.setImageBitmap(bmp);
@@ -316,11 +432,12 @@ public class PhotoPickerActivity extends Activity {
           Bitmap t = decodeThumb(id);
           if (t != null) cache.put(id, t);
           final Bitmap ft = t;
+          final int pos = position;
           main.post(() -> {
-            if (grid.getAdapter() == null || ft == null) return;
-            int child = position - grid.getFirstVisiblePosition();
+            if (ft == null) return;
+            int child = pos - grid.getFirstVisiblePosition();
             View v = grid.getChildAt(child);
-            if (v instanceof FrameLayout) {
+            if (v instanceof FrameLayout && v.getTag() != null && (Integer) v.getTag() == pos) {
               ((ImageView) ((FrameLayout) v).getChildAt(0)).setImageBitmap(ft);
             }
           });
@@ -330,16 +447,9 @@ public class PhotoPickerActivity extends Activity {
     }
   }
 
-  private int selectedIndex(int pos) {
-    List<Integer> sorted = new ArrayList<>(selected);
-    Collections.sort(sorted);
-    return sorted.indexOf(pos);
-  }
-
   private Bitmap decodeThumb(long id) {
     ContentResolver cr = getContentResolver();
     Uri uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id);
-    // API <29：优先用系统生成的缩略图（快）；新版走采样解码
     if (Build.VERSION.SDK_INT < 29) {
       try {
         Bitmap t = MediaStore.Images.Thumbnails.getThumbnail(cr, id, MediaStore.Images.Thumbnails.MINI_KIND, null);
