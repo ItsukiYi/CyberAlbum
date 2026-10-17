@@ -23,7 +23,6 @@ import android.webkit.WebViewClient;
 public class MainActivity extends Activity {
 
   private static final int REQ_FILE_CHOOSER = 1001;
-  private static final int REQ_PHOTO_PICKER = 1002;
 
   private WebView web;
   private ValueCallback<Uri[]> filePathCallback;
@@ -65,23 +64,11 @@ public class MainActivity extends Activity {
         if (types != null && types.length > 0 && types[0] != null && !types[0].isEmpty()) {
           accept = types[0];
         }
-        // <input multiple> -> MODE_OPEN_MULTIPLE：走自定义相册页（支持拖拽多选）
+        // <input multiple> -> MODE_OPEN_MULTIPLE：系统选择器多选
         boolean multiple = params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
         Log.i("ShounaApp", "accept=" + accept + " mode=" + params.getMode() + " multiple=" + multiple);
-        if (multiple && !params.isCaptureEnabled()) {
-          try {
-            startActivityForResult(new Intent(MainActivity.this, PhotoPickerActivity.class), REQ_PHOTO_PICKER);
-            Log.i("ShounaApp", "custom photo picker started");
-          } catch (Exception e) {
-            filePathCallback.onReceiveValue(null);
-            filePathCallback = null;
-            Log.w("ShounaApp", "start PhotoPicker failed: " + e.getMessage());
-            return false;
-          }
-          return true;
-        }
 
-        // 单选 / 拍照：系统相册或相机
+        // 相册/文件：系统默认选择器（支持多选）
         Intent content = new Intent(Intent.ACTION_GET_CONTENT);
         content.addCategory(Intent.CATEGORY_OPENABLE);
         content.setType(accept);
@@ -129,24 +116,6 @@ public class MainActivity extends Activity {
 
   @Override
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-    if (requestCode == REQ_PHOTO_PICKER) {
-      // 自定义相册选择页（拖拽多选）
-      if (filePathCallback == null) return;
-      Uri[] results = null;
-      if (resultCode == RESULT_OK && data != null) {
-        android.os.Parcelable[] arr = data.getParcelableArrayExtra(PhotoPickerActivity.EXTRA_RESULT_URIS);
-        if (arr != null) {
-          results = new Uri[arr.length];
-          for (int i = 0; i < arr.length; i++) {
-            results[i] = (Uri) arr[i];
-          }
-        }
-      }
-      Log.i("ShounaApp", "picker result uris: " + (results == null ? "null" : results.length));
-      filePathCallback.onReceiveValue(results);
-      filePathCallback = null;
-      return;
-    }
     if (requestCode == REQ_FILE_CHOOSER) {
       if (filePathCallback == null) return;
       Uri[] results = null;

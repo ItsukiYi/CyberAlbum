@@ -3,11 +3,6 @@
     package="com.shouna.app">
 
   <uses-permission android:name="android.permission.INTERNET" />
-  <!-- 自定义相册选择页需要读取照片（Android 13+ 用 READ_MEDIA_IMAGES，旧版用 READ_EXTERNAL_STORAGE） -->
-  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-  <uses-permission
-      android:name="android.permission.READ_EXTERNAL_STORAGE"
-      android:maxSdkVersion="32" />
 
   <application
       android:label="电子收纳册"
@@ -24,9 +19,5 @@
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
     </activity>
-    <activity
-        android:name=".PhotoPickerActivity"
-        android:exported="false"
-        android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize" />
   </application>
 </manifest>
