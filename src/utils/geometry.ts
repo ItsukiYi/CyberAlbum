@@ -7,20 +7,13 @@ export interface Point {
   y: number;
 }
 
-/** 缩至小图 → 背景色估计 → 前景掩膜 */
-function buildMask(src: HTMLCanvasElement): { mask: Uint8Array; w: number; h: number; ring: number; scale: number; data: Uint8ClampedArray } | null {
-  const maxDim = 300;
-  const scale = Math.min(1, maxDim / Math.max(src.width, src.height));
-  const w = Math.max(2, Math.round(src.width * scale));
-  const h = Math.max(2, Math.round(src.height * scale));
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) return null;
-  ctx.drawImage(src, 0, 0, w, h);
-  const { data } = ctx.getImageData(0, 0, w, h);
-
+/** 从像素数据构建前景掩膜（不依赖 canvas，可单测；scale 用于坐标换算回源图） */
+function buildMaskFromPixels(
+  data: Uint8ClampedArray,
+  w: number,
+  h: number,
+  scale = 1
+): { mask: Uint8Array; w: number; h: number; ring: number; scale: number } | null {
   // 边框环平均色 = 背景色
   const ring = Math.max(2, Math.round(w * 0.03));
   let r = 0,
@@ -56,7 +49,34 @@ function buildMask(src: HTMLCanvasElement): { mask: Uint8Array; w: number; h: nu
       if (dr * dr + dg * dg + db * db > thresh * thresh) mask[y * w + x] = 1;
     }
   }
-  return { mask, w, h, ring, scale, data };
+  return { mask, w, h, ring, scale };
+}
+
+/** 缩至小图 → 背景色估计 → 前景掩膜 */
+function buildMask(src: HTMLCanvasElement): { mask: Uint8Array; w: number; h: number; ring: number; scale: number } | null {
+  const maxDim = 300;
+  const scale = Math.min(1, maxDim / Math.max(src.width, src.height));
+  const w = Math.max(2, Math.round(src.width * scale));
+  const h = Math.max(2, Math.round(src.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.drawImage(src, 0, 0, w, h);
+  const { data } = ctx.getImageData(0, 0, w, h);
+  return buildMaskFromPixels(data, w, h, scale);
+}
+
+/** 掩膜上的四边形检测（两路合并），供两个入口共用 */
+function detectQuadsFromBm(bm: { mask: Uint8Array; w: number; h: number; ring: number; scale: number }): Point[][] | null {
+  const { mask, w, h, ring, scale } = bm;
+  const imgArea = (w - ring * 2) * (h - ring * 2);
+
+  const a = quadsFromBlobs(mask, w, h, scale, imgArea);
+  const b = quadsFromProjection(mask, w, h, ring, scale, imgArea);
+
+  return mergeQuads([...a, ...b]);
 }
 
 /**
@@ -69,13 +89,14 @@ function buildMask(src: HTMLCanvasElement): { mask: Uint8Array; w: number; h: nu
 export function detectQuadsFromCanvas(src: HTMLCanvasElement): Point[][] | null {
   const bm = buildMask(src);
   if (!bm) return null;
-  const { mask, w, h, ring, scale } = bm;
-  const imgArea = (w - ring * 2) * (h - ring * 2);
+  return detectQuadsFromBm(bm);
+}
 
-  const a = quadsFromBlobs(mask, w, h, scale, imgArea);
-  const b = quadsFromProjection(mask, w, h, ring, scale, imgArea);
-
-  return mergeQuads([...a, ...b]);
+/** 与 detectQuadsFromCanvas 相同的检测，但直接吃像素数据（不依赖 canvas，便于测试） */
+export function detectQuadsFromPixels(data: Uint8ClampedArray, w: number, h: number): Point[][] | null {
+  const bm = buildMaskFromPixels(data, w, h);
+  if (!bm) return null;
+  return detectQuadsFromBm(bm);
 }
 
 /** 连通块法：每块取最小外接矩形，形状过差/过小/几乎占满的过滤掉 */

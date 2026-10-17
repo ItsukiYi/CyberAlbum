@@ -26,6 +26,7 @@ type Mode = 'single' | 'album';
 interface Preview {
   id: string;
   blob: Blob;
+  corrected?: boolean; // 该张是否成功执行了自动边角矫正
 }
 
 function Thumb({ file }: { file: File }) {
@@ -113,21 +114,23 @@ export function BatchImport({ onClose }: Props) {
   };
 
   /** 处理一张照片 → 可能裁出多张（一图多色纸），输出前按设置自动美化 */
-  const processFile = async (file: File): Promise<Blob[]> => {
+  const processFile = async (file: File): Promise<{ blobs: Blob[]; corrected: boolean }> => {
     const img = await fileToImage(file);
     const cv = imageToCanvas(img);
     const en = settings.autoEnhance;
-    if (skip) return [await compressImage(img, en)];
+    if (skip) return { blobs: [await compressImage(img, en)], corrected: false };
     const quads = detectQuadsFromCanvas(cv) ?? [];
     const valid = quads.filter((q) => !cornersEqual(q, fullFrameCorners(cv.width, cv.height), 3));
     if (valid.length > 1) {
       // 一张照片里有多张色纸：各自裁正
       const out: Blob[] = [];
       for (const q of valid) out.push((await cropQuadToBlob(cv, q, en)).blob);
-      return out;
+      return { blobs: out, corrected: true };
     }
     const q = valid[0] ?? null;
-    return q ? [(await cropQuadToBlob(cv, q, en)).blob] : [await compressCanvas(cv, undefined, en)];
+    return q
+      ? { blobs: [(await cropQuadToBlob(cv, q, en)).blob], corrected: true }
+      : { blobs: [await compressCanvas(cv, undefined, en)], corrected: false };
   };
 
   /** 阶段 1：处理照片 → 预览 */
@@ -137,8 +140,8 @@ export function BatchImport({ onClose }: Props) {
     const out: Preview[] = [];
     for (const file of files) {
       try {
-        const blobs = await processFile(file);
-        for (const b of blobs) out.push({ id: uid('p'), blob: b });
+        const r = await processFile(file);
+        for (const b of r.blobs) out.push({ id: uid('p'), blob: b, corrected: r.corrected });
       } catch (err) {
         console.error('照片处理失败:', err);
       }
@@ -337,6 +340,9 @@ export function BatchImport({ onClose }: Props) {
               {preview.map((p) => (
                 <div className="preview-item" key={p.id}>
                   <ThumbBlob blob={p.blob} />
+                  <span className={`preview-tag${p.corrected ? ' ok' : ''}`}>
+                    {p.corrected ? '已矫正' : '原图'}
+                  </span>
                   <button
                     type="button"
                     className="preview-rot"
@@ -349,7 +355,7 @@ export function BatchImport({ onClose }: Props) {
                 </div>
               ))}
             </div>
-            <p className="batch-desc">共 {preview.length} 张，朝向颠倒的点「↻」转正，确认后导入。</p>
+            <p className="batch-desc">共 {preview.length} 张。「已矫正」= 自动识别到边框并裁正；「原图」= 未识别到（保持原样）。朝向颠倒的点「↻」转正，确认后导入。</p>
           </div>
         )}
 
