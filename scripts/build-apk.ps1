@@ -7,7 +7,9 @@
 # ============================================================
 param(
   [switch]$Install,
-  [switch]$SkipWebBuild
+  [switch]$SkipWebBuild,
+  [int]$VersionCode = 1,
+  [string]$VersionName = '1.0.0'
 )
 
 # Note: use Continue (not Stop) so native-command stderr never becomes a
@@ -40,7 +42,7 @@ $genOut     = Join-Path $build 'gen'
 $classOut   = Join-Path $build 'classes'
 $dexOut     = Join-Path $build 'dex'
 $keystore   = Join-Path $build 'shouna.keystore'
-$apkOut     = Join-Path $build 'cyberalbum-v1.0.0.apk'
+$apkOut     = Join-Path $build "cyberalbum-$VersionName.apk"
 
 foreach ($d in @($build, $resRoot, $resDir, $apkAssets, $assetsOut, $genOut, $classOut, $dexOut)) {
   New-Item -ItemType Directory -Force -Path $d | Out-Null
@@ -86,7 +88,7 @@ if ($LASTEXITCODE -ne 0) { throw 'aapt2 compile failed' }
 $baseApk = Join-Path $build 'base.apk'
 & $aapt2 link -o $baseApk -I $androidJar --manifest (Join-Path $root 'android\AndroidManifest.xml') `
   --java $genOut --min-sdk-version 24 --target-sdk-version 35 `
-  --version-code 1 --version-name 1.0.0 $flata
+  --version-code $VersionCode --version-name $VersionName $flata
 if ($LASTEXITCODE -ne 0) { throw 'aapt2 link failed' }
 
 # ---------- 4. Compile Java ----------
@@ -132,11 +134,13 @@ if ($Install) {
   $devices = & $adb devices | Select-String '^\S+\s+device\b'
   if (-not $devices) { throw 'No authorized USB Android device found' }
   $serial = ($devices[0] -split '\s+')[0]
-  Write-Host "==> fresh install to $serial (uninstall first, avoids MIUI incremental-install corruption)"
-  & $adb -s $serial uninstall com.shouna.app 2>$null
-  & $adb -s $serial install $apkOut
+  Write-Host "==> upgrade install to $serial (keeps app data)"
+  # -r replaces while KEEPING /data/data (IndexedDB / Dexie data lives there);
+  # --no-incremental forces a full APK transfer (MIUI incremental install
+  # corrupted classes.dex before). NO uninstall - that wipes all user data.
+  & $adb -s $serial install -r -d --no-incremental $apkOut
   if ($LASTEXITCODE -ne 0) { throw 'adb install failed' }
   Write-Host '==> launch app'
   & $adb -s $serial shell am start -n com.shouna.app/.MainActivity
-  Write-Host 'Launched OK'
+  Write-Host 'Launched OK (data preserved)'
 }
