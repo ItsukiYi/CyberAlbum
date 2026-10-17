@@ -79,6 +79,13 @@ function detectQuadsFromBm(bm: { mask: Uint8Array; w: number; h: number; ring: n
   return mergeQuads([...a, ...b]);
 }
 
+/** 把识别四边形角点限制在图像范围内（外接矩形可能越界） */
+function clampQuadsToImage(quads: Point[][], w: number, h: number): Point[][] {
+  return quads.map((q) =>
+    q.map((p) => ({ x: Math.min(w, Math.max(0, p.x)), y: Math.min(h, Math.max(0, p.y)) }))
+  );
+}
+
 /**
  * 自动检测照片里的色纸/海报等矩形物，返回候选四边形（源图坐标 [TL,TR,BR,BL]）。
  * 两路检测合并：
@@ -89,14 +96,16 @@ function detectQuadsFromBm(bm: { mask: Uint8Array; w: number; h: number; ring: n
 export function detectQuadsFromCanvas(src: HTMLCanvasElement): Point[][] | null {
   const bm = buildMask(src);
   if (!bm) return null;
-  return detectQuadsFromBm(bm);
+  const r = detectQuadsFromBm(bm);
+  return r ? clampQuadsToImage(r, src.width, src.height) : null;
 }
 
 /** 与 detectQuadsFromCanvas 相同的检测，但直接吃像素数据（不依赖 canvas，便于测试） */
 export function detectQuadsFromPixels(data: Uint8ClampedArray, w: number, h: number): Point[][] | null {
   const bm = buildMaskFromPixels(data, w, h);
   if (!bm) return null;
-  return detectQuadsFromBm(bm);
+  const r = detectQuadsFromBm(bm);
+  return r ? clampQuadsToImage(r, w, h) : null;
 }
 
 /** 连通块法：每块取最小外接矩形，形状过差/过小/几乎占满的过滤掉 */
