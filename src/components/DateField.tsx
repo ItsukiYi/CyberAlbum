@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * 自定义日期选择（替代 <input type="date"> 的安卓原生弹窗）。
@@ -77,7 +78,12 @@ export function DateField({ value, onChange, placeholder }: Props) {
   };
 
   const confirm = () => {
-    if (pending) onChange(pending);
+    console.log('[DateField] confirm called, pending=' + (pending ?? 'none'));
+    try {
+      if (pending) onChange(pending);
+    } catch (err) {
+      console.error('[DateField] onChange error', err);
+    }
     close();
   };
   const clear = () => {
@@ -102,109 +108,124 @@ export function DateField({ value, onChange, placeholder }: Props) {
         <span className="date-chev">{open ? '▲' : '▼'}</span>
       </button>
 
-      {open && <div className="date-backdrop" onClick={close} />}
+      {open &&
+        createPortal(
+          <>
+            <div className="date-backdrop" onClick={close} />
+            <div className="date-pop">
+              <div className="date-head">
+                <button type="button" className="date-nav" onClick={() => shift(-1)} aria-label="上一档">
+                  ‹
+                </button>
+                <button type="button" className="date-title date-title-btn" onClick={showTitle}>
+                  {title}
+                  <span className="date-title-hint">{mode === 'day' ? '（点此切年/月）' : ''}</span>
+                </button>
+                <button type="button" className="date-nav" onClick={() => shift(1)} aria-label="下一档">
+                  ›
+                </button>
+              </div>
 
-      {open && (
-        <div className="date-pop">
-          <div className="date-head">
-            <button type="button" className="date-nav" onClick={() => shift(-1)} aria-label="上一档">
-              ‹
-            </button>
-            <button type="button" className="date-title date-title-btn" onClick={showTitle}>
-              {title}
-              <span className="date-title-hint">{mode === 'day' ? '（点此切年/月）' : ''}</span>
-            </button>
-            <button type="button" className="date-nav" onClick={() => shift(1)} aria-label="下一档">
-              ›
-            </button>
-          </div>
+              {mode === 'day' && (
+                <div className="date-grid">
+                  {WEEK.map((w) => (
+                    <span className="date-week" key={w}>
+                      {w}
+                    </span>
+                  ))}
+                  {cells.map((d, i) => {
+                    const inMonth = d.getMonth() === view.m;
+                    const dayStr = fmtDate(d);
+                    const sel = (pending ?? value) === dayStr;
+                    const isToday = dayStr === todayStr;
+                    return (
+                      <button
+                        type="button"
+                        key={i}
+                        className={`date-cell${inMonth ? '' : ' dim'}${sel ? ' sel' : ''}${isToday ? ' today' : ''}`}
+                        onClick={() => setPending(dayStr)}
+                      >
+                        {d.getDate()}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
-          {mode === 'day' && (
-            <div className="date-grid">
-              {WEEK.map((w) => (
-                <span className="date-week" key={w}>
-                  {w}
-                </span>
-              ))}
-              {cells.map((d, i) => {
-                const inMonth = d.getMonth() === view.m;
-                const dayStr = fmtDate(d);
-                const sel = (pending ?? value) === dayStr;
-                const isToday = dayStr === todayStr;
-                return (
+              {mode === 'month' && (
+                <div className="date-mgrid">
+                  {MONTHS.map((m, i) => (
+                    <button
+                      type="button"
+                      key={m}
+                      className={`date-mcell${i === view.m ? ' sel' : ''}`}
+                      onClick={() => {
+                        setView({ y: view.y, m: i });
+                        setMode('day');
+                      }}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {mode === 'year' && (
+                <div className="date-mgrid">
+                  {Array.from({ length: 12 }, (_, k) => view.y - 6 + k).map((y) => (
+                    <button
+                      type="button"
+                      key={y}
+                      className={`date-mcell${y === view.y ? ' sel' : ''}`}
+                      onClick={() => {
+                        setView({ y, m: view.m });
+                        setMode('month');
+                      }}
+                    >
+                      {y}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="date-foot">
+                {value && (
+                  <button type="button" className="date-clear" onClick={clear}>
+                    清除
+                  </button>
+                )}
+                <span className="date-foot-spacer" />
+                {mode === 'day' && (
+                  <button type="button" className="date-today" onClick={() => setPending(todayStr)}>
+                    今天
+                  </button>
+                )}
+                {mode === 'day' ? (
                   <button
                     type="button"
-                    key={i}
-                    className={`date-cell${inMonth ? '' : ' dim'}${sel ? ' sel' : ''}${isToday ? ' today' : ''}`}
-                    onClick={() => setPending(dayStr)}
+                    className="date-ok"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      confirm();
+                    }}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      confirm();
+                    }}
                   >
-                    {d.getDate()}
+                    确定
                   </button>
-                );
-              })}
+                ) : (
+                  <button type="button" className="date-ok" onClick={close}>
+                    关闭
+                  </button>
+                )}
+              </div>
             </div>
-          )}
-
-          {mode === 'month' && (
-            <div className="date-mgrid">
-              {MONTHS.map((m, i) => (
-                <button
-                  type="button"
-                  key={m}
-                  className={`date-mcell${i === view.m ? ' sel' : ''}`}
-                  onClick={() => {
-                    setView({ y: view.y, m: i });
-                    setMode('day');
-                  }}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {mode === 'year' && (
-            <div className="date-mgrid">
-              {Array.from({ length: 12 }, (_, k) => view.y - 6 + k).map((y) => (
-                <button
-                  type="button"
-                  key={y}
-                  className={`date-mcell${y === view.y ? ' sel' : ''}`}
-                  onClick={() => {
-                    setView({ y, m: view.m });
-                    setMode('month');
-                  }}
-                >
-                  {y}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="date-foot">
-            {value && (
-              <button type="button" className="date-clear" onClick={clear}>
-                清除
-              </button>
-            )}
-            <span className="date-foot-spacer" />
-            {mode === 'day' && (
-              <button type="button" className="date-today" onClick={() => setPending(todayStr)}>
-                今天
-              </button>
-            )}
-            {mode === 'day' ? (
-              <button type="button" className="date-ok" onClick={confirm}>
-                确定
-              </button>
-            ) : (
-              <button type="button" className="date-ok" onClick={close}>
-                关闭
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+          </>,
+          document.body
+        )}
     </>
   );
 }

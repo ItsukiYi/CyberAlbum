@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import REGIONS from '../data/region.json';
 import type { Region } from '../db/types';
 
@@ -32,9 +33,14 @@ export function RegionField({ value, onChange, placeholder }: Props) {
   const close = () => setOpen(false);
 
   const confirm = () => {
-    // 选了省才写入；没选也直接关闭（确定始终可点）
-    if (temp.province) {
-      onChange({ ...temp });
+    console.log('[RegionField] confirm called, province=' + (temp.province || 'none'));
+    try {
+      // 选了省才写入；没选也直接关闭（确定始终可点）
+      if (temp.province) {
+        onChange({ ...temp });
+      }
+    } catch (err) {
+      console.error('[RegionField] onChange error', err);
     }
     close();
   };
@@ -55,71 +61,83 @@ export function RegionField({ value, onChange, placeholder }: Props) {
         <span className="date-chev">{open ? '▲' : '▼'}</span>
       </button>
 
-      {open && <div className="date-backdrop" onClick={close} />}
+      {open &&
+        createPortal(
+          <>
+            <div className="date-backdrop" onClick={close} />
+            <div className="date-pop region-pop">
+              <div className="date-head">
+                <span className="date-title">选择地点</span>
+              </div>
 
-      {open && (
-        <div className="date-pop region-pop">
-          <div className="date-head">
-            <span className="date-title">选择地点</span>
-          </div>
+              <div className="region-cols">
+                <div className="region-col">
+                  {provinces.map((p) => (
+                    <button
+                      type="button"
+                      key={p}
+                      className={`region-opt${temp.province === p ? ' sel' : ''}`}
+                      onClick={() => setTemp({ province: p, city: '', district: '' })}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <div className="region-col">
+                  {cities.map((c) => (
+                    <button
+                      type="button"
+                      key={c}
+                      className={`region-opt${temp.city === c ? ' sel' : ''}`}
+                      onClick={() => setTemp({ ...temp, city: c, district: '' })}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                  {temp.province && cities.length === 0 && <span className="region-empty">—</span>}
+                </div>
+                <div className="region-col">
+                  {districts.map((d) => (
+                    <button
+                      type="button"
+                      key={d}
+                      className={`region-opt${temp.district === d ? ' sel' : ''}`}
+                      onClick={() => setTemp({ ...temp, district: d })}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                  {temp.city && districts.length === 0 && <span className="region-empty">—</span>}
+                </div>
+              </div>
 
-          <div className="region-cols">
-            <div className="region-col">
-              {provinces.map((p) => (
+              <div className="date-foot">
+                {hasValue && (
+                  <button type="button" className="date-clear" onClick={clear}>
+                    清除
+                  </button>
+                )}
+                <span className="date-foot-spacer" />
+                <button type="button" className="date-today" onClick={close}>
+                  关闭
+                </button>
                 <button
                   type="button"
-                  key={p}
-                  className={`region-opt${temp.province === p ? ' sel' : ''}`}
-                  onClick={() => setTemp({ province: p, city: '', district: '' })}
+                  className="date-ok"
+                  onClick={confirm}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    confirm();
+                  }}
                 >
-                  {p}
+                  确定
                 </button>
-              ))}
+              </div>
             </div>
-            <div className="region-col">
-              {cities.map((c) => (
-                <button
-                  type="button"
-                  key={c}
-                  className={`region-opt${temp.city === c ? ' sel' : ''}`}
-                  onClick={() => setTemp({ ...temp, city: c, district: '' })}
-                >
-                  {c}
-                </button>
-              ))}
-              {temp.province && cities.length === 0 && <span className="region-empty">—</span>}
-            </div>
-            <div className="region-col">
-              {districts.map((d) => (
-                <button
-                  type="button"
-                  key={d}
-                  className={`region-opt${temp.district === d ? ' sel' : ''}`}
-                  onClick={() => setTemp({ ...temp, district: d })}
-                >
-                  {d}
-                </button>
-              ))}
-              {temp.city && districts.length === 0 && <span className="region-empty">—</span>}
-            </div>
-          </div>
-
-          <div className="date-foot">
-            {hasValue && (
-              <button type="button" className="date-clear" onClick={clear}>
-                清除
-              </button>
-            )}
-            <span className="date-foot-spacer" />
-            <button type="button" className="date-today" onClick={close}>
-              关闭
-            </button>
-            <button type="button" className="date-ok" onClick={confirm}>
-              确定
-            </button>
-          </div>
-        </div>
-      )}
+          </>,
+          document.body
+        )}
     </>
   );
 }

@@ -80,6 +80,13 @@ public class MainActivity extends Activity {
         showSourceDialog(multiple, accept);
         return true;
       }
+
+      @Override
+      public boolean onConsoleMessage(android.webkit.ConsoleMessage cm) {
+        // 页面 console 转发到 logcat（tag ShounaApp），便于排查
+        Log.i("ShounaApp", "[console] " + cm.message());
+        return true;
+      }
     });
     web.setOverScrollMode(View.OVER_SCROLL_NEVER);
     web.loadUrl("file:///android_asset/www/index.html");
