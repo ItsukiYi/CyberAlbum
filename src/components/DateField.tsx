@@ -193,14 +193,15 @@ export function DateField({ value, onChange, placeholder }: Props) {
                 今天
               </button>
             )}
-            <button
-              type="button"
-              className="date-ok"
-              disabled={mode !== 'day' || !(pending ?? value)}
-              onClick={confirm}
-            >
-              确定
-            </button>
+            {mode === 'day' ? (
+              <button type="button" className="date-ok" onClick={confirm}>
+                确定
+              </button>
+            ) : (
+              <button type="button" className="date-ok" onClick={close}>
+                关闭
+              </button>
+            )}
           </div>
         </div>
       )}

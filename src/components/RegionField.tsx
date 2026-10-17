@@ -32,6 +32,7 @@ export function RegionField({ value, onChange, placeholder }: Props) {
   const close = () => setOpen(false);
 
   const confirm = () => {
+    // 选了省才写入；没选也直接关闭（确定始终可点）
     if (temp.province) {
       onChange({ ...temp });
     }
@@ -110,7 +111,10 @@ export function RegionField({ value, onChange, placeholder }: Props) {
               </button>
             )}
             <span className="date-foot-spacer" />
-            <button type="button" className="date-ok" disabled={!temp.province} onClick={confirm}>
+            <button type="button" className="date-today" onClick={close}>
+              关闭
+            </button>
+            <button type="button" className="date-ok" onClick={confirm}>
               确定
             </button>
           </div>
