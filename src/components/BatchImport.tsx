@@ -4,6 +4,7 @@ import { saveItem, savePhoto, saveSettings, uid } from '../db/repo';
 import type { Item, SignedState } from '../db/types';
 import { Modal, Btn, Field, Segmented } from './ui';
 import { AutoInput } from './AutoInput';
+import { DateField } from './DateField';
 import { detectQuadsFromCanvas } from '../utils/geometry';
 import {
   canvasToBlob,
@@ -292,12 +293,7 @@ export function BatchImport({ onClose }: Props) {
                 />
               </Field>
               <Field label="日期">
-                <input
-                  type="date"
-                  className="input"
-                  value={albumInfo.date}
-                  onChange={(e) => setAlbumInfo({ ...albumInfo, date: e.target.value })}
-                />
+                <DateField value={albumInfo.date} onChange={(v) => setAlbumInfo({ ...albumInfo, date: v })} />
               </Field>
             </div>
             <Field label="签名状态">

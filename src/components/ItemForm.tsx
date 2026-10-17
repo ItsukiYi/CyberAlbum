@@ -7,6 +7,7 @@ import { PhotoEditor } from './PhotoEditor';
 import { TagInput } from './TagInput';
 import { AutoInput } from './AutoInput';
 import { compressImage, fileToImage } from '../utils/image';
+import { DateField } from './DateField';
 import REGIONS from '../data/region.json';
 
 interface DraftPhoto {
@@ -425,7 +426,7 @@ export function ItemForm() {
               <AutoInput value={draft.event} onChange={(v) => set({ event: v })} suggestions={eventSuggestions} placeholder="场次 / 活动名" />
             </Field>
             <Field label="日期">
-              <input type="date" className="input" value={draft.date} onChange={(e) => set({ date: e.target.value })} />
+              <DateField value={draft.date} onChange={(v) => set({ date: v })} />
             </Field>
           </div>
 
