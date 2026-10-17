@@ -987,6 +987,78 @@ img {
   color: #5a5a6a;
   padding: 8px 0;
 }
+/* 通用下拉（SelectField） */
+.select-trigger {
+  text-align: left;
+}
+.select-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+.select-opt {
+  display: block;
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: transparent;
+  color: #e8e8f0;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.select-opt:hover {
+  background: #2a2a3e;
+}
+.select-opt.sel {
+  background: var(--accent, #6d5ce0);
+  color: #fff;
+  font-weight: 600;
+}
+/* 颜色选择（ColorField） */
+.color-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--surface-2, #26263a);
+  color: #eee;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: inline-block;
+  vertical-align: middle;
+}
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+.color-cell {
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+.color-cell.sel {
+  box-shadow: 0 0 0 2px var(--accent, #6d5ce0), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+.color-custom {
+  display: flex;
+  gap: 8px;
+}
+.color-hex {
+  flex: 1;
+}
 .batch-progress {
   display: flex;
   align-items: center;

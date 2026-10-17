@@ -5,6 +5,7 @@ import type { Item, SignedState } from '../db/types';
 import { Modal, Btn, Field, Segmented } from './ui';
 import { AutoInput } from './AutoInput';
 import { DateField } from './DateField';
+import { SelectField } from './SelectField';
 import { detectQuadsFromCanvas } from '../utils/geometry';
 import {
   canvasToBlob,
@@ -261,18 +262,14 @@ export function BatchImport({ onClose }: Props) {
             </Field>
             <div className="field-row">
               <Field label="类型">
-                <select
-                  className="input"
+                <SelectField
                   value={albumInfo.typeId}
-                  onChange={(e) => setAlbumInfo({ ...albumInfo, typeId: e.target.value })}
-                >
-                  <option value="">未分类</option>
-                  {types.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+                  options={types.map((t) => ({ value: t.id, label: t.name }))}
+                  onChange={(v) => setAlbumInfo({ ...albumInfo, typeId: v })}
+                  placeholder="未分类"
+                  allowEmpty
+                  emptyLabel="未分类"
+                />
               </Field>
               <Field label="IP">
                 <AutoInput

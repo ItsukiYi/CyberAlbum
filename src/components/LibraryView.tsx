@@ -8,6 +8,7 @@ import { ItemCard } from './ItemCard';
 import { FilterPanel } from './FilterPanel';
 import { BatchImport } from './BatchImport';
 import { EmptyState } from './ui';
+import { SelectField } from './SelectField';
 
 export function LibraryView() {
   const { items, types, openDetail } = useStore();
@@ -55,12 +56,17 @@ export function LibraryView() {
           <button className="batch-toggle" onClick={() => setShowBatch(true)}>
             ⚡ 批量
           </button>
-          <select className="sort-select" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
-            <option value="newest">最新录入</option>
-            <option value="oldest">最早录入</option>
-            <option value="name">按名称</option>
-            <option value="date">按日期</option>
-          </select>
+          <SelectField
+            className="sort-select"
+            value={sort}
+            options={[
+              { value: 'newest', label: '最新录入' },
+              { value: 'oldest', label: '最早录入' },
+              { value: 'name', label: '按名称' },
+              { value: 'date', label: '按日期' },
+            ]}
+            onChange={(v) => setSort(v as SortKey)}
+          />
         </div>
       </header>
 

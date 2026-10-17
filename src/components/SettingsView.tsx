@@ -11,6 +11,8 @@ import {
 import type { CustomFieldDef, TypeDef } from '../db/types';
 import { exportBackup, exportSync, getLastSyncTime, importBackup, importMerge } from '../utils/backup';
 import { Btn } from './ui';
+import { SelectField } from './SelectField';
+import { ColorField } from './ColorField';
 
 /** 新增类型时按顺序循环取的颜色（与预设类型的配色风格一致） */
 const PALETTE = [
@@ -48,15 +50,7 @@ function TypeRow({ t, onDelete }: { t: TypeDef; onDelete: (id: string) => void }
         onBlur={commitName}
         onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
       />
-      <label className="color-pick" title="点这里更换颜色">
-        <input
-          type="color"
-          value={t.color}
-          aria-label="更换颜色"
-          onChange={(e) => saveType({ ...t, color: e.target.value })}
-        />
-        <span className="color-swatch" style={{ background: t.color }} />
-      </label>
+      <ColorField value={t.color} onChange={(c) => saveType({ ...t, color: c })} />
       {confirming ? (
         <button className="btn btn-danger btn-sm" onClick={() => onDelete(t.id)}>
           确定?
@@ -96,15 +90,16 @@ function FieldRow({ f, onDelete }: { f: CustomFieldDef; onDelete: (id: string) =
         onBlur={commitName}
         onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
       />
-      <select
-        className="input row-select"
+      <SelectField
+        className="row-select"
         value={f.kind}
-        onChange={(e) => saveCustomField({ ...f, kind: e.target.value as CustomFieldDef['kind'] })}
-      >
-        <option value="text">文本</option>
-        <option value="number">数字</option>
-        <option value="select">下拉</option>
-      </select>
+        options={[
+          { value: 'text', label: '文本' },
+          { value: 'number', label: '数字' },
+          { value: 'select', label: '下拉' },
+        ]}
+        onChange={(v) => saveCustomField({ ...f, kind: v as CustomFieldDef['kind'] })}
+      />
       {f.kind === 'select' && (
         <input
           className="input row-input"

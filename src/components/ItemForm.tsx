@@ -9,6 +9,7 @@ import { AutoInput } from './AutoInput';
 import { compressImage, fileToImage } from '../utils/image';
 import { DateField } from './DateField';
 import { RegionField } from './RegionField';
+import { SelectField } from './SelectField';
 import REGIONS from '../data/region.json';
 
 interface DraftPhoto {
@@ -397,14 +398,14 @@ export function ItemForm() {
           </Field>
 
           <Field label="类型">
-            <select className="input" value={draft.typeId} onChange={(e) => set({ typeId: e.target.value })}>
-              <option value="">未分类</option>
-              {types.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+            <SelectField
+              value={draft.typeId}
+              options={types.map((t) => ({ value: t.id, label: t.name }))}
+              onChange={(v) => set({ typeId: v })}
+              placeholder="未分类"
+              allowEmpty
+              emptyLabel="未分类"
+            />
           </Field>
 
           <div className="field-row">
@@ -450,18 +451,14 @@ export function ItemForm() {
           {customFields.map((f) => (
             <Field label={f.name} key={f.id}>
               {f.kind === 'select' ? (
-                <select
-                  className="input"
+                <SelectField
                   value={draft.custom[f.id] ?? ''}
-                  onChange={(e) => set({ custom: { ...draft.custom, [f.id]: e.target.value } })}
-                >
-                  <option value="">—</option>
-                  {f.options.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
+                  options={f.options.map((o) => ({ value: o, label: o }))}
+                  onChange={(v) => set({ custom: { ...draft.custom, [f.id]: v } })}
+                  placeholder="—"
+                  allowEmpty
+                  emptyLabel="—"
+                />
               ) : f.kind === 'number' ? (
                 <input
                   className="input"
