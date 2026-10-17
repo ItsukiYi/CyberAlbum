@@ -8,6 +8,7 @@ import { TagInput } from './TagInput';
 import { AutoInput } from './AutoInput';
 import { compressImage, fileToImage } from '../utils/image';
 import { DateField } from './DateField';
+import { RegionField } from './RegionField';
 import REGIONS from '../data/region.json';
 
 interface DraftPhoto {
@@ -431,52 +432,7 @@ export function ItemForm() {
           </div>
 
           <Field label="地点">
-            <div className="region-picker">
-              <select
-                className="input"
-                value={draft.region?.province ?? ''}
-                onChange={(e) =>
-                  set({ region: e.target.value ? { province: e.target.value, city: '', district: '' } : null })
-                }
-              >
-                <option value="">省</option>
-                {provOptions.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="input"
-                value={draft.region?.city ?? ''}
-                disabled={!draft.region?.province}
-                onChange={(e) =>
-                  set({ region: { province: draft.region!.province, city: e.target.value, district: '' } })
-                }
-              >
-                <option value="">市</option>
-                {cityOptions.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="input"
-                value={draft.region?.district ?? ''}
-                disabled={!draft.region?.city}
-                onChange={(e) =>
-                  set({ region: { province: draft.region!.province, city: draft.region!.city, district: e.target.value } })
-                }
-              >
-                <option value="">区/县</option>
-                {distOptions.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <RegionField value={draft.region} onChange={(r) => set({ region: r })} />
           </Field>
 
           <Field label="签名状态">

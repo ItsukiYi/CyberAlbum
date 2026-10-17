@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useStore } from '../state/store';
 import type { Filters, SignedState } from '../db/types';
 import { Btn, EmptyState } from './ui';
+import { RegionField } from './RegionField';
 
 function distinct(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean))).sort((a, b) => a.localeCompare(b, 'zh-CN'));
@@ -117,58 +118,7 @@ export function FilterPanel({
       {opts.provinces.length > 0 && (
         <div className="fg">
           <div className="fg-label">地区</div>
-          <div className="region-picker">
-            <select
-              className="input"
-              value={filters.region?.province ?? ''}
-              onChange={(e) =>
-                onChange({ region: e.target.value ? { province: e.target.value, city: '', district: '' } : null })
-              }
-            >
-              <option value="">省</option>
-              {opts.provinces.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-            <select
-              className="input"
-              value={filters.region?.city ?? ''}
-              disabled={!filters.region?.province}
-              onChange={(e) =>
-                onChange({ region: { province: filters.region!.province, city: e.target.value, district: '' } })
-              }
-            >
-              <option value="">市</option>
-              {opts.cities.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            <select
-              className="input"
-              value={filters.region?.district ?? ''}
-              disabled={!filters.region?.city}
-              onChange={(e) =>
-                onChange({
-                  region: {
-                    province: filters.region!.province,
-                    city: filters.region!.city,
-                    district: e.target.value,
-                  },
-                })
-              }
-            >
-              <option value="">区/县</option>
-              {opts.districts.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </div>
+          <RegionField value={filters.region} onChange={(r) => onChange({ region: r })} />
         </div>
       )}
 

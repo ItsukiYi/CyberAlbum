@@ -24,10 +24,12 @@ export function TagInput({ values, onChange, suggestions = [], placeholder, hint
     setText('');
   };
 
-  const cands = focused && text.trim()
-    ? suggestions
-        .filter((s) => s !== text.trim() && s.includes(text.trim()) && !values.includes(s))
-        .slice(0, 6)
+  // 聚焦即显示已有候选（空输入=全部，有输入=过滤），点选直接加入；输入新名字回车=新增
+  const cands = focused
+    ? (text.trim()
+        ? suggestions.filter((s) => s !== text.trim() && s.includes(text.trim()) && !values.includes(s))
+        : suggestions.filter((s) => !values.includes(s)))
+        .slice(0, 8)
     : [];
 
   return (
