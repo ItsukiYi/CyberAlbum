@@ -64,10 +64,15 @@ public class MainActivity extends Activity {
         if (types != null && types.length > 0 && types[0] != null && !types[0].isEmpty()) {
           accept = types[0];
         }
-        Log.i("ShounaApp", "accept=" + accept);
+        // <input multiple> -> MODE_OPEN_MULTIPLE，允许系统选择器多选
+        boolean multiple = params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
+        Log.i("ShounaApp", "accept=" + accept + " mode=" + params.getMode() + " multiple=" + multiple);
         Intent content = new Intent(Intent.ACTION_GET_CONTENT);
         content.addCategory(Intent.CATEGORY_OPENABLE);
         content.setType(accept);
+        if (multiple) {
+          content.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        }
 
         // 相机：写入 MediaStore 得到 Uri，免去 FileProvider；拍照由系统相机 App 完成
         cameraUri = null;
